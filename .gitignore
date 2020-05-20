@@ -1,0 +1,18 @@
+# VS-Code
+.vscode/
+
+# Python
+commander-venv/
+*.pyc
+__pycache__/
+
+# Flask
+instance/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Wheel
+dist/
+build/
+*.egg-info/
