@@ -1,4 +1,4 @@
-import sys, time, ssl, json
+import os, sys, time, ssl, json
 import paho.mqtt.client as mqtt
 
 
@@ -8,24 +8,36 @@ class MqttHandler:
   def __init__(self, config_file, plug_def_file, tls_ca_file):
     """ Constructor """
 
-    print(f"Debug-constructor: config_file: {config_file}, plug_def_file:{plug_def_file}")
+    #print(f"Debug-constructor: config_file: {config_file}, plug_def_file:{plug_def_file}")
 
     # Setup subscription queries
     self._QUERIES = {
         "online-state": {
-            "prefix": "tele",
-            "type": "LWT",
-            "target": self._set_online_state
+            "prefix":
+                "tele",
+            "type":
+                "LWT",
+            "target":
+                lambda plug_id, state: self._tasmota_plugs_state[plug_id].update(
+                    {"_online-state": state.decode("utf-8")})
         },
         "command-result": {
-            "prefix": "stat",
-            "type": "RESULT",
-            "target": self._set_stat_result
+            "prefix":
+                "stat",
+            "type":
+                "RESULT",
+            "target":
+                lambda plug_id, result: self._tasmota_plugs_state[plug_id].update(
+                    json.loads(result))
         },
         "common-status": {
-            "prefix": "stat",
-            "type": "STATUS",
-            "target": self._set_stat_result
+            "prefix":
+                "stat",
+            "type":
+                "STATUS",
+            "target":
+                lambda plug_id, result: self._tasmota_plugs_state[plug_id].update(
+                    json.loads(result))
         }
     }
 
@@ -54,7 +66,7 @@ class MqttHandler:
   def _on_connect(self, mqtt_client, userdata, flags, rc):
     """ Callback for Paho-MQTT client """
 
-    print(f"Debug-on_connect: Connected with result code {rc}")
+    #print(f"Debug-on_connect: Connected with result code {rc}")
 
     # Subscribe to needed topics
     for query, params in self._QUERIES.items():
@@ -69,7 +81,7 @@ class MqttHandler:
   def _on_message(self, mqtt_client, userdata, msg):
     """ Callback for Paho-MQTT client"""
 
-    print(f"Debug-on_message: Recieved at {msg.topic}: {msg.payload}")
+    #print(f"Debug-on_message: Recieved at {msg.topic}: {msg.payload}")
 
     # Parse topic
     message_prefix = msg.topic.split('/')[0]
@@ -81,14 +93,6 @@ class MqttHandler:
       if message_prefix == params["prefix"] and message_type == params["type"]:
         params["target"](plug_id, msg.payload)
 
-  def _set_online_state(self, plug_id, state):
-    """ Message handler for tele/.../LWT messages """
-    self._tasmota_plugs_state[plug_id]["_online-state"] = state.decoder("utf-8")
-
-  def _set_stat_result(self, plug_id, result):
-    """ Message handler for stat/.../<any> messages """
-    self._tasmota_plugs_state[plug_id].update(json.loads(result))
-
   def get_plugs_state(self):
     """ Get dictionary with current information on all registered plugs """
     return self._tasmota_plugs_state
@@ -98,10 +102,13 @@ if __name__ == "__main__":
 
   from reprint import output
 
-  CONFIG_FILE = "../instance/MQTT_CONFIG.json"
-  PLUG_DEF_FILE = "../instance/TASMOTA_PLUGS.json"
+  print(os.getcwd())
 
-  mqtth = MqttHandler(CONFIG_FILE, PLUG_DEF_FILE)
+  CONFIG_FILE = "instance/MQTT_CONFIG.json"
+  PLUG_DEF_FILE = "instance/TASMOTA_PLUGS.json"
+  TLS_CA_FILE = "instance/mosquitto_ca.crt"
+
+  mqtth = MqttHandler(CONFIG_FILE, PLUG_DEF_FILE, TLS_CA_FILE)
 
   with output(
       output_type="list", initial_len=len(mqtth.get_plugs_state()) * 2, interval=0) as output_list:
