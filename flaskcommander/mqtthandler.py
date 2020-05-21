@@ -100,10 +100,13 @@ class MqttHandler:
 
   def get_full_plugs_state(self):
     """ Get dictionary with current information on all registered plugs """
+
     return self._tasmota_plugs_state
 
   def get_short_plugs_state(self):
     """ Get dictionary with most important information on all registered plugs """
+
+    # really ugly bit, don't look,
     short_info = dict()
     for plug_id, info in self._tasmota_plugs_state.items():
       current_module = str(info["common-status"]["Status"]["Module"])
