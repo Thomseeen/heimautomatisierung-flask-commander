@@ -1,0 +1,8 @@
+{
+  "MQTT_BROKER": {
+    "IP": "0.0.0.0",
+    "PORT": 8883,
+    "USER": "user",
+    "PASSWORD": "password"
+  }
+}

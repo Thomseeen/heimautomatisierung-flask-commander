@@ -1,0 +1,8 @@
+{
+  "kitchen": {
+    "_name": "Tasmota-PWPlug1"
+  },
+  "livingroom": {
+    "_name": "Tastmota-RPlug1"
+  }
+}
