@@ -29,8 +29,13 @@ def create_app(test_config=None):
       os.path.join(app.instance_path, app.config["MQTT_TLS_CA"]))
 
   # a simple test route showing plug states
-  @app.route("/state")
-  def state():
-    return jsonify(mqtth.get_plugs_state())
+  @app.route("/full-state")
+  def full_state():
+    return jsonify(mqtth.get_full_plugs_state())
+
+  # a simple test route showing simplified plug states
+  @app.route("/short-state")
+  def short_state():
+    return jsonify(mqtth.get_short_plugs_state())
 
   return app

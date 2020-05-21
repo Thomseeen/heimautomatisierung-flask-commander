@@ -19,7 +19,7 @@ class MqttHandler:
                 "LWT",
             "target":
                 lambda plug_id, state: self._tasmota_plugs_state[plug_id].update(
-                    {"_online-state": state.decode("utf-8")})
+                    {"online-state": state})
         },
         "command-result": {
             "prefix":
@@ -27,7 +27,7 @@ class MqttHandler:
             "type":
                 "RESULT",
             "target":
-                lambda plug_id, result: self._tasmota_plugs_state[plug_id].update(
+                lambda plug_id, result: self._tasmota_plugs_state[plug_id]["command-result"].update(
                     json.loads(result))
         },
         "common-status": {
@@ -36,7 +36,7 @@ class MqttHandler:
             "type":
                 "STATUS",
             "target":
-                lambda plug_id, result: self._tasmota_plugs_state[plug_id].update(
+                lambda plug_id, result: self._tasmota_plugs_state[plug_id]["common-status"].update(
                     json.loads(result))
         }
     }
@@ -59,6 +59,11 @@ class MqttHandler:
     # Read TASMOTA_PLUGS.json
     with open(plug_def_file) as file:
       self._tasmota_plugs_state = json.load(file)
+
+    # Create additional nested dictionaries to update
+    for query, params in self._QUERIES.items():
+      for plug in self._tasmota_plugs_state:
+        self._tasmota_plugs_state[plug][query] = {}
 
     # Start MQTT background thread
     self._mqtt_client.loop_start()
@@ -91,18 +96,34 @@ class MqttHandler:
     # Get the right message handler according to topic
     for query, params in self._QUERIES.items():
       if message_prefix == params["prefix"] and message_type == params["type"]:
-        params["target"](plug_id, msg.payload)
+        params["target"](plug_id, msg.payload.decode("utf-8"))
 
-  def get_plugs_state(self):
+  def get_full_plugs_state(self):
     """ Get dictionary with current information on all registered plugs """
     return self._tasmota_plugs_state
+
+  def get_short_plugs_state(self):
+    """ Get dictionary with most important information on all registered plugs """
+    short_info = dict()
+    for plug_id, info in self._tasmota_plugs_state.items():
+      current_module = str(info["common-status"]["Status"]["Module"])
+      short_info[plug_id] = dict()
+      short_info[plug_id]["name"] = info["name"]
+      short_info[plug_id]["online-state"] = info["online-state"]
+      short_info[plug_id]["time"] = info["command-result"]["Time"]
+      short_info[plug_id]["module"] = info["command-result"]["Module"][current_module]
+      short_info[plug_id]["relais"] = dict()
+      if short_info[plug_id]["module"] == "Gosund SP1":
+        short_info[plug_id]["relais"]["230V"] = info["command-result"]["POWER"]
+      elif short_info[plug_id]["module"] == "Gosund SP112":
+        short_info[plug_id]["relais"]["230V"] = info["command-result"]["POWER1"]
+        short_info[plug_id]["relais"]["5V"] = info["command-result"]["POWER2"]
+    return short_info
 
 
 if __name__ == "__main__":
 
   from reprint import output
-
-  print(os.getcwd())
 
   CONFIG_FILE = "instance/MQTT_CONFIG.json"
   PLUG_DEF_FILE = "instance/TASMOTA_PLUGS.json"
